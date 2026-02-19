@@ -12,6 +12,7 @@
 
 ## Production Access
 ```bash
+
 # SSH Connection (Ubuntu = ubuntu user)
 ssh -i "saroj-ubuntu-prod-2026.pem" ubuntu@13.235.245.235
 
@@ -21,7 +22,7 @@ curl -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-da
 curl -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/local-ipv4
 # 172.31.47.200
 
-Day-1 Production Setup
+Day-1 Production Setup  
 
 # Ubuntu production hardening + Nginx
 sudo apt update && sudo apt upgrade -y
