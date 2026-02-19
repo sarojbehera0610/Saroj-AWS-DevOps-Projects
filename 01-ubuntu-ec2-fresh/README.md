@@ -8,7 +8,6 @@
 💾 Storage: 20GB gp3 EBS
 🔑 Key: saroj-ubuntu-prod-2026.pem
 🛡️ Security Group: SSH(22)+HTTP(80) → Anywhere
-🔑 Key Pair: saroj-ubuntu-prod-2026.pem
 
 
 ## Production Access
