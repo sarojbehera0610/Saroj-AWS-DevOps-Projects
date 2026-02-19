@@ -37,4 +37,10 @@ Internet → SG(Anywhere 22/80) → Ubuntu 24.04 → Nginx → 20GB EBS
 
 Status: 🟢 2/2 checks passed | 20GB production storage
 
+Live Verification
+✅ SSH: ubuntu@13.235.245.235
+
+✅ Nginx: http://13.235.245.235
+
+✅ index.nginx-debian.html customized
 
