@@ -37,8 +37,4 @@ Internet → SG(Anywhere 22/80) → Ubuntu 24.04 → Nginx → 20GB EBS
 
 Status: 🟢 2/2 checks passed | 20GB production storage
 
-ssh -i "saroj-ubuntu-prod-2026.pem" ubuntu@13.235.245.235
-
-
-
 
