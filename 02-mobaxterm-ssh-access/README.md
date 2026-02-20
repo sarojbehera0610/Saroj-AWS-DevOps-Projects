@@ -1,6 +1,6 @@
 # 🟢 02 MobaXterm Production SSH Access
 
-**GUI terminal + SFTP → Ubuntu EC2 13.235.245.235** [file:246]
+**GUI terminal + SFTP → Ubuntu EC2 13.203.156.167** [file:246]
 
 ## Dual Terminal Strategy (Production Ops)
 | Terminal | Use Case | Status |
@@ -11,7 +11,7 @@
 
 ## Target Infrastructure
 
-Ubuntu EC2: 13.235.245.235 (Public IP)
+Ubuntu EC2: 13.203.156.167 (Public IP)
 User: ubuntu
 Key: saroj-ubuntu-prod-2026.pem
 
