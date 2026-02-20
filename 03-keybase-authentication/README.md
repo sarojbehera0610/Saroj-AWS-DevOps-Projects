@@ -63,9 +63,4 @@ whoami     # saroj
 id         # uid=1001(saroj) gid=1001(saroj)
 pwd        # /home/saroj
 
-🔒 EXACT Production Permissions (SSH Requirements)
-Path	Command	Required	Shows
-/home/saroj/.ssh/	chmod 700	drwx------	ls -ld /home/saroj/.ssh/
-authorized_keys	chmod 600	-rw-------	ls -l /home/saroj/.ssh/authorized_keys
-Private key	chmod 600	-rw-------	ls -la ~/.ssh/saroj_key
-Ownership	chown -R	saroj:saroj	ls -la /home/saroj/
+
