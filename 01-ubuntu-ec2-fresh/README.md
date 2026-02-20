@@ -36,7 +36,7 @@ Architecture Diagram
 
 Internet → SG(Anywhere 22/80) → Ubuntu 24.04 → Nginx → 20GB EBS
 
-Status: 🟢 2/2 checks passed | 20GB production storage
+Status: 🟢 3/3 checks passed | 20GB production storage
 
 Live Verification
 ✅ SSH: ubuntu@ip-172-31-47-200:~$
