@@ -1,6 +1,6 @@
 # 🟢 02 MobaXterm Production SSH Access
 
-**GUI Terminal + SFTP → Ubuntu EC2 13.203.156.167**
+**GUI Terminal → Ubuntu EC2 13.203.156.167**
 
 ## 🎬 Exact MobaXterm Connection Steps (Production Ready)
 
