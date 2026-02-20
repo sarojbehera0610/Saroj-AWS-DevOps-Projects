@@ -5,9 +5,9 @@
 ## Live Production Deployments
 | Project | Status | Key Metrics | Tech Stack |
 |---------|--------|-------------|------------|
-| EC2 Production Web Tier | 🟢 Live | t3.micro Spot (90% cost savings), 99.9% uptime | EC2, Nginx, Security Groups [cite:2] |
-| EBS Multi-Volume Backup | 🟢 Automated | Zero-downtime recovery, permanent fstab mounts | EBS Snapshots, Volume Management [cite:9] |
-| High Availability Setup | 🟢 Configured | Status checks passed, Savings Plans optimized | CloudWatch, Purchasing Options [cite:8] |
+| EC2 Production Web Tier | 🟢 Live | t3.micro Spot (90% cost savings), 99.9% uptime | EC2, Nginx, Security Groups  |
+| EBS Multi-Volume Backup | 🟢 Automated | Zero-downtime recovery, permanent fstab mounts | EBS Snapshots, Volume Management  |
+| High Availability Setup | 🟢 Configured | Status checks passed, Savings Plans optimized | CloudWatch, Purchasing Options  |
 
 **Live Demo**: http://your-ec2-public-ip (Nginx serving custom interactive page)
 
