@@ -9,8 +9,6 @@
 | EBS Multi-Volume Backup | 🟢 Automated | Zero-downtime recovery, permanent fstab mounts | EBS Snapshots, Volume Management  |
 | High Availability Setup | 🟢 Configured | Status checks passed, Savings Plans optimized | CloudWatch, Purchasing Options  |
 
-**Live Demo**: http://your-ec2-public-ip (Nginx serving custom interactive page)
-
 ## Core Competencies Demonstrated
 - EC2 lifecycle management (Spot instances, rightsizing)
 - Nginx production deployment with custom interactive content
