@@ -77,7 +77,7 @@ curl ifconfig.me # Shows Public IP
 AWS Console → VPC → MyApp-VPC → Diagram view
 
 
-** #15: Complete VPC → Public/Private → IGW → Route Tables**
+** #09: Complete VPC → Public/Private → IGW → Route Tables**
 
 ## **📊 VPC Configuration Summary**
 | Component | Name | CIDR | AZ | Route Table | Public IP | Purpose |
