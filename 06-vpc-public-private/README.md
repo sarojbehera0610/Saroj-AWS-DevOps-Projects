@@ -88,3 +88,59 @@ AWS Console → VPC → MyApp-VPC → Diagram view
 | IGW | MyApp-IGW | - | - | Public-RouteTable | - | Internet |
 | Frontend EC2 | Frontend-Public | 10.0.1.x | 1a | IGW Access ✓ | ✓ | Web Server |
 | DB EC2 | Database-Private | 10.0.2.x | 1a | No IGW | ✗ | Database |
+
+### **Step 10: Create NAT Gateway for Private Subnet**
+VPC → NAT Gateways → Create NAT gateway:
+├── Name: NAT-amazon-clone-DB
+├── Subnet: Public-Subnet-Frontend (Public subnet required)
+├── Elastic IP: Allocate new → Create
+
+** #10: NAT-amazon-clone-DB → Status: Available**
+
+### **Step 11: Create Private DB Route Table**
+Route Tables → Create route table:
+├── Name: RT-02-amazon-clone-DB
+├── VPC: MyApp-VPC
+
+**#11: RT-02-amazon-clone-DB created**
+
+### **Step 12: Edit Private DB Route Table → Add NAT Route**
+RT-02-amazon-clone-DB → Routes → Edit routes:
+├── Destination: 0.0.0.0/0
+├── Target: NAT Gateway → NAT-amazon-clone-DB
+
+** #12: RT-02 → 0.0.0.0/0 → nat-[ID]**
+
+### **Step 13: Associate NAT Route Table with Private DB Subnet**
+RT-02-amazon-clone-DB → Subnet Associations → Edit:
+├── Subnet: Private-Subnet-DB ✓ (Replace previous association)
+
+** #13: RT-02 → Subnet Associations → Private-Subnet-DB**
+
+### **Step 14: Copy SSH Key to Frontend Server (Local → Public EC2)**
+Local Terminal → SCP key to Frontend:
+scp -i saroj-vpc-key.pem saroj-vpc-key.pem ubuntu@[Frontend-Public-IP]:~/.ssh/
+
+** #14: SCP success → `saroj-vpc-key.pem 100%`**
+
+### **Step 15: Access Private DB + Test NAT Internet**
+SSH Frontend → SSH Private DB:
+ssh -i ~/.ssh/saroj-vpc-key.pem ubuntu@10.0.2.x
+
+Fix permissions + Test NAT
+chmod 600 ~/.ssh/saroj-vpc-key.pem
+ping -c 10 8.8.8.8
+
+Success: 64 bytes from 8.8.8.8 ✓
+
+** #15: Private DB → `ping 8.8.8.8` → `64 bytes... 0% loss`**
+
+## **📊 Updated VPC + NAT Architecture**
+Internet
+↓ IGW (Public Subnet)
+Custom VPC (10.0.0.0/16)
+├── Public Subnet 10.0.1.0/24 → Frontend EC2 (Direct Internet)
+│ └── NAT-amazon-clone-DB (Outbound for Private)
+└── Private Subnet 10.0.2.0/24 → Database EC2
+↓ RT-02-amazon-clone-DB (0.0.0.0/0 → NAT)
+✅ NAT Internet Access ✓
