@@ -11,7 +11,7 @@
 
 
 ## Production Access
-```bash
+bash
 
 # SSH Connection (Ubuntu = ubuntu user)
 ssh -i "saroj-ubuntu-prod-2026.pem" ubuntu@13.235.245.235
