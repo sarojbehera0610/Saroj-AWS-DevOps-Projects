@@ -26,7 +26,7 @@
 🟢 Success: ubuntu@ip-172-31-47-200:~$
 
 ### **Step 5: Production Verification**
-```bash
+bash
 # Verify correct infrastructure
 curl -H "X-aws-ec2-metadata-token: $TOKEN" \
 http://169.254.169.254/latest/meta-data/public-ipv4
