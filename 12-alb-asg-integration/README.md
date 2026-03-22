@@ -1,196 +1,447 @@
-# 🟢 12 ALB + Auto Scaling Groups (3 ASGs → 3 TGs → Path Routing)
+# ⚖️ AWS ALB + Auto Scaling Groups with Path-Based Routing
 
-**ASG-Home(2) → TG-Home → ALB → /**  
-**ASG-Mobile(2) → TG-Mobile → ALB → /mobilepage/**  
-**ASG-Payment(2) → TG-Payment → ALB → /payment/**
+Route traffic intelligently across 3 Auto Scaling Groups using an **Application Load Balancer** with path-based routing rules on AWS — simulating a real-world multi-service architecture (Home, Mobile, Payment).
 
-## 🎯 Multi-ASG Path-Based Architecture
-Browser
-↓ ALB-Amazon (1a+1b)
-├── / → TG-Home → ASG-Home (2 instances)
-├── /mobilepage/* → TG-Mobile → ASG-Mobile (2 instances)
-└── /payment/* → TG-Payment → ASG-Payment (2 instances)
+---
 
-## **📋 COMPLETE PRODUCTION STEPS **
+## 🗂️ Project Overview
 
-### **🖥️ 3 Manual Instances (Baseline Testing)**
+This project demonstrates how to set up a **production-grade load balancing architecture** on AWS where a single ALB routes incoming requests to different backend services based on the URL path:
 
-**Step 1: Launch Home-Amazon Instance**
-EC2 → Launch:
-├── Name: Home-Amazon
-├── Ubuntu 24.04 | t3.micro | Public IP: ENABLE ✓
-├── Security Group: SG-Web-Public (SSH:22, HTTP:80)
-├── User data:
+| URL Path | Target Group | Auto Scaling Group | Instances |
+|---|---|---|---|
+| `/` | TG-Home | ASG-Home | 2 |
+| `/mobilepage/*` | TG-Mobile | ASG-Mobile | 2 |
+| `/payment/*` | TG-Payment | ASG-Payment | 2 |
 
+---
+
+## 🏗️ Architecture
+
+```
+                        Browser
+                           │
+                           ▼
+              ┌─────────────────────────┐
+              │      ALB-Amazon         │
+              │  (Internet-facing)      │
+              │  ap-south-1a + 1b       │
+              └─────────────────────────┘
+                           │
+           ┌───────────────┼───────────────┐
+           │               │               │
+           ▼               ▼               ▼
+      Path: /        /mobilepage/*     /payment/*
+           │               │               │
+           ▼               ▼               ▼
+       TG-Home          TG-Mobile      TG-Payment
+           │               │               │
+           ▼               ▼               ▼
+       ASG-Home         ASG-Mobile     ASG-Payment
+      (2 instances)    (2 instances)   (2 instances)
+```
+
+---
+
+## ✅ Prerequisites
+
+- AWS Account with EC2, ALB, and Auto Scaling access
+- Default VPC with subnets in **ap-south-1a** and **ap-south-1b**
+- Security Group **SG-Web-Public** with:
+  - Inbound: SSH (port 22), HTTP (port 80)
+  - Outbound: All traffic
+
+---
+
+## 🚀 Step-by-Step Setup
+
+---
+
+## PHASE 1 — Launch 3 Manual Instances (Baseline Testing)
+
+### Step 1 — Launch Home-Amazon Instance
+
+```
+EC2 → Launch Instance
+├── Name:             Home-Amazon
+├── AMI:              Ubuntu 24.04
+├── Instance Type:    t3.micro
+├── Auto-assign IP:   ENABLE ✓
+├── Security Group:   SG-Web-Public (SSH:22, HTTP:80)
+```
+
+**User Data:**
+
+```bash
 #!/bin/bash
 apt update && apt install nginx -y
 echo "<h1>AMAZON HOME - $(hostname)</h1>" > /var/www/html/index.html
 systemctl start nginx && systemctl enable nginx
+```
 
-** #1: Home-Amazon Public IP ✓**
+> ✅ Verify: Hit the Public IP in browser → `AMAZON HOME - ip-xx-xx-xx-xx`
 
-**Step 2: Launch Mobile-Amazon Instance**
+---
+
+### Step 2 — Launch Mobile-Amazon Instance
+
+```
 Name: Mobile-Amazon
-User data:
+AMI: Ubuntu 24.04 | t3.micro | Auto-assign IP: ENABLE ✓
+Security Group: SG-Web-Public
+```
 
+**User Data:**
+
+```bash
 #!/bin/bash
 apt update && apt install nginx -y
 mkdir -p /var/www/html/mobilepage
 echo "<h1>MOBILE PAGE - $(hostname)</h1>" > /var/www/html/mobilepage/index.html
 ln -sf /var/www/html/mobilepage /usr/share/nginx/html/mobilepage
 systemctl start nginx && systemctl enable nginx
+```
 
-** #2: Mobile-Amazon running**
+> ✅ Verify: Hit `http://<Public-IP>/mobilepage/` → `MOBILE PAGE - ip-xx-xx-xx-xx`
 
-**Step 3: Launch Payment-Amazon Instance**
+---
+
+### Step 3 — Launch Payment-Amazon Instance
+
+```
 Name: Payment-Amazon
-User data:
+AMI: Ubuntu 24.04 | t3.micro | Auto-assign IP: ENABLE ✓
+Security Group: SG-Web-Public
+```
 
+**User Data:**
+
+```bash
 #!/bin/bash
 apt update && apt install nginx -y
 mkdir -p /var/www/html/payment
 echo "<h1>PAYMENT PAGE - $(hostname)</h1>" > /var/www/html/payment/index.html
 ln -sf /var/www/html/payment /usr/share/nginx/html/payment
 systemctl start nginx && systemctl enable nginx
+```
 
-** #3: Payment-Amazon running**
-🎯 3 Target Groups
-Step 4: Create TG-Home
+> ✅ Verify: Hit `http://<Public-IP>/payment/` → `PAYMENT PAGE - ip-xx-xx-xx-xx`
 
-Target Groups → Create:
-├── Name: TG-Home
-├── Protocol: HTTP:80 | VPC: Default
-├── Health check: / | 200-299
-**No targets registered yet**
- #4: TG-Home created
+---
 
-Step 5: Create TG-Mobile
+## PHASE 2 — Create 3 Target Groups
 
-Name: TG-Mobile
-├── Health check: /mobilepage | 200-299
- #5: TG-Mobile created
+### Step 4 — Create TG-Home
 
-Step 6: Create TG-Payment
+```
+EC2 → Target Groups → Create Target Group
+├── Name:           TG-Home
+├── Protocol:       HTTP
+├── Port:           80
+├── VPC:            Default VPC
+├── Health Check:   /
+├── Success Codes:  200-299
+```
 
-Name: TG-Payment
-├── Health check: /payment | 200-299
- #6: TG-Payment created
+> ✅ TG-Home created (no targets registered yet — ASG will auto-register)
 
-🚀 3 Launch Templates (Public IP Enabled)
-Step 7: Create Home-LT
+---
 
-Launch Templates → Create:
-├── Name: home-lt (v1)
-├── Ubuntu 24.04 | t3.micro
-├── **Network Interface → Auto-assign Public IP: ENABLE ✓**
+### Step 5 — Create TG-Mobile
+
+```
+Name:          TG-Mobile
+Health Check:  /mobilepage
+Success Codes: 200-299
+```
+
+> ✅ TG-Mobile created
+
+---
+
+### Step 6 — Create TG-Payment
+
+```
+Name:          TG-Payment
+Health Check:  /payment
+Success Codes: 200-299
+```
+
+> ✅ TG-Payment created
+
+---
+
+## PHASE 3 — Create 3 Launch Templates
+
+### Step 7 — Create Home Launch Template
+
+```
+EC2 → Launch Templates → Create
+├── Name:                     home-lt (v1)
+├── AMI:                      Ubuntu 24.04
+├── Instance Type:            t3.micro
+├── Network Interface:        Auto-assign Public IP → ENABLE ✓
+├── Security Group:           SG-Web-Public
+├── User Data:                Same as Home-Amazon (Step 1)
+```
+
+> ✅ home-lt created with Public IP enabled
+
+---
+
+### Step 8 — Create Mobile Launch Template
+
+```
+Name:       mobile-lt (v1)
+User Data:  Same as Mobile-Amazon (Step 2)
+```
+
+> ✅ mobile-lt created
+
+---
+
+### Step 9 — Create Payment Launch Template
+
+```
+Name:       payment-lt (v1)
+User Data:  Same as Payment-Amazon (Step 3)
+```
+
+> ✅ payment-lt created
+
+---
+
+## PHASE 4 — Create 3 Auto Scaling Groups
+
+### Step 10 — Create ASG-Home
+
+```
+EC2 → Auto Scaling Groups → Create
+├── Name:              ASG-Home
+├── Launch Template:   home-lt
+├── VPC:               Default VPC
+├── Availability Zones: ap-south-1a + ap-south-1b ✓
+├── Desired Capacity:  2
+├── Minimum Capacity:  1
+├── Maximum Capacity:  3
+```
+
+> ✅ ASG-Home created — 2 instances launching
+
+---
+
+### Step 11 — Create ASG-Mobile
+
+```
+Name:              ASG-Mobile
+Launch Template:   mobile-lt
+AZs:               ap-south-1a + ap-south-1b
+Desired: 2 | Min: 1 | Max: 3
+```
+
+> ✅ ASG-Mobile created
+
+---
+
+### Step 12 — Create ASG-Payment
+
+```
+Name:              ASG-Payment
+Launch Template:   payment-lt
+AZs:               ap-south-1a + ap-south-1b
+Desired: 2 | Min: 1 | Max: 3
+```
+
+> ✅ ASG-Payment created
+
+---
+
+## PHASE 5 — Attach Target Groups to ASGs
+
+### Step 13 — Attach TG-Home to ASG-Home
+
+```
+Auto Scaling Groups → ASG-Home
+→ Details Tab → Load Balancing → Edit
+→ Attach Target Group: TG-Home ✓ → Save
+```
+
+> ✅ ASG-Home instances will auto-register into TG-Home
+
+---
+
+### Step 14 — Attach TG-Mobile to ASG-Mobile
+
+```
+ASG-Mobile → Load Balancing → TG-Mobile ✓ → Save
+```
+
+> ✅ ASG-Mobile → TG-Mobile attached
+
+---
+
+### Step 15 — Attach TG-Payment to ASG-Payment
+
+```
+ASG-Payment → Load Balancing → TG-Payment ✓ → Save
+```
+
+> ✅ ASG-Payment → TG-Payment attached
+
+---
+
+## PHASE 6 — Create ALB with Path-Based Routing
+
+### Step 16 — Create ALB-Amazon
+
+```
+EC2 → Load Balancers → Create → Application Load Balancer
+├── Name:           ALB-Amazon
+├── Scheme:         Internet-facing
+├── VPC:            Default VPC
+├── AZ Mappings:    ap-south-1a + ap-south-1b ✓
 ├── Security Group: SG-Web-Public
-├── User data: **Same as Home-Amazon**
- #7: home-lt → Public IP ENABLE ✓
+├── Listener:       HTTP:80 → Default Forward to: TG-Home
+```
 
-Step 8: Create Mobile-LT
+> ✅ ALB-Amazon created — copy the DNS name
 
-Name: mobile-lt (v1)
-├── User data: **Same as Mobile-Amazon**
-#8: mobile-lt created
+---
 
-Step 9: Create Payment-LT
+### Step 17 — Add Path Rule for Mobile
 
-Name: payment-lt (v1)
-├── User data: **Same as Payment-Amazon**
- #9: payment-lt created
+```
+ALB-Amazon → Listeners → HTTP:80 → View/Edit Rules
+→ Add Rule
+├── IF:   Path is  /mobilepage/*
+├── THEN: Forward to TG-Mobile
+→ Save
+```
 
-⚙️ 3 Auto Scaling Groups
-Step 10: Create ASG-Home
+> ✅ Rule 1: `/mobilepage/*` → TG-Mobile
 
-Auto Scaling → Create ASG:
-├── Name: ASG-Home
-├── Launch template: home-lt
-├── VPC: Default → AZs: ap-south-1a + ap-south-1b ✓
-├── Desired: **2** | Min: **1** | Max: **3**
- #10: ASG-Home 2/1/3 ✓
+---
 
-Step 11: Create ASG-Mobile
+### Step 18 — Add Path Rule for Payment
 
-Name: ASG-Mobile
-├── Launch template: mobile-lt
-├── Same AZs + Capacity
- #11: ASG-Mobile created
+```
+→ Add Another Rule
+├── IF:   Path is  /payment/*
+├── THEN: Forward to TG-Payment
+→ Save
+```
 
-Step 12: Create ASG-Payment
+> ✅ Rule 2: `/payment/*` → TG-Payment
 
-Name: ASG-Payment
-├── Launch template: payment-lt
- #12: ASG-Payment created
+---
 
-🔗 Attach Target Groups to ASGs
-Step 13: ASG-Home → TG-Home
+### Step 19 — Verify Health Checks
 
-ASG-Home → Integrations → Load balancer:
-├── Target group: **TG-Home** ✓ → Save
- #13: ASG-Home → TG-Home attached
+```
+EC2 → Target Groups
+├── TG-Home    → Targets: 2/2 Healthy ✓
+├── TG-Mobile  → Targets: 2/2 Healthy ✓
+├── TG-Payment → Targets: 2/2 Healthy ✓
+```
 
-Step 14: ASG-Mobile → TG-Mobile
+> ✅ All 6 instances healthy across 3 Target Groups
 
-ASG-Mobile → Integrations → **TG-Mobile** ✓
- #14: ASG-Mobile → TG-Mobile
+---
 
-Step 15: ASG-Payment → TG-Payment
+## PHASE 7 — Test Path-Based Routing
 
-ASG-Payment → Integrations → **TG-Payment** ✓
- #15: ASG-Payment → TG-Payment
+### Step 20 — Test Home Path
 
-⚖️ ALB with Path-Based Routing
-Step 16: Create ALB-Amazon
+```
+Browser: http://<ALB-Amazon-DNS>/
+```
 
-Load Balancers → ALB:
-├── Name: ALB-Amazon
-├── Internet-facing | Default VPC
-├── AZ Mappings: ap-south-1a + ap-south-1b ✓
-├── Security Group: SG-Web-Public
-├── Listener HTTP:80 → **Forward to: TG-Home** (Default)
- #16: ALB-Amazon creating
+Expected:
+```
+AMAZON HOME - ip-xx-xx-xx-xx
+```
 
-Step 17: ALB Listener Rules - Mobile Path
+Refresh multiple times → load balances between 2 ASG-Home instances ✅
 
-Listeners → HTTP:80 → **View/edit rules**:
-├── **Add rule** → IF Path `/mobilepage/*` → **TG-Mobile**
- #17: Rule 1: /mobilepage/ → TG-Mobile*
+---
 
-Step 18: ALB Listener Rules - Payment Path
+### Step 21 — Test Mobile Path
 
-**Add another rule** → IF Path `/payment/*` → **TG-Payment**
- #18: Rule 2: /payment/ → TG-Payment*
+```
+Browser: http://<ALB-Amazon-DNS>/mobilepage/
+```
 
-Step 19: ALB DNS + Health Checks
+Expected:
+```
+MOBILE PAGE - ip-xx-xx-xx-xx
+```
 
-ALB-Amazon → **DNS name** copied
-Target Groups → **3 TGs → 2/2 Healthy each** ✓
- #19: ALB DNS + 6/6 Healthy targets
+Refresh multiple times → load balances between 2 ASG-Mobile instances ✅
 
-🧪 Multi-Path Testing
-Step 20: Test Home Path
+---
 
-Browser: http://ALB-Amazon-DNS/
-→ "AMAZON HOME - ip-xx-xx-xx-xx"
-Refresh → Load balances 2 ASG-Home instances
- #20: ALB/ → Home ✓
+### Step 22 — Test Payment Path
 
-Step 21: Test Mobile Path
+```
+Browser: http://<ALB-Amazon-DNS>/payment/
+```
 
-http://ALB-Amazon-DNS/mobilepage/
-→ "MOBILE PAGE - ip-xx-xx-xx-xx" 
-Refresh → 2 ASG-Mobile instances
- #21: ALB/mobilepage/ → Mobile ✓
+Expected:
+```
+PAYMENT PAGE - ip-xx-xx-xx-xx
+```
 
-Step 22: Test Payment Path
+Refresh multiple times → load balances between 2 ASG-Payment instances ✅
 
-http://ALB-Amazon-DNS/payment/
-→ "PAYMENT PAGE - ip-xx-xx-xx-xx"
-Refresh → 2 ASG-Payment instances
- #22: ALB/payment/ → Payment ✓
+---
 
-📊 ALB + ASG Integration Summary
-Path	Target Group	ASG	Instances	Status
-/	TG-Home	ASG-Home	2/2	✅ Healthy
-/mobilepage/	TG-Mobile	ASG-Mobile	2/2	✅ Healthy
-/payment/	TG-Payment	ASG-Payment	2/2	✅ Healthy
+## 📊 Final Architecture Summary
+
+| Path | Target Group | ASG | Instances | Health |
+|---|---|---|---|---|
+| `/` | TG-Home | ASG-Home | 2/2 | ✅ Healthy |
+| `/mobilepage/*` | TG-Mobile | ASG-Mobile | 2/2 | ✅ Healthy |
+| `/payment/*` | TG-Payment | ASG-Payment | 2/2 | ✅ Healthy |
+
+---
+
+## 🔧 Troubleshooting
+
+| Issue | Fix |
+|---|---|
+| Health check failing | Ensure Nginx is running and correct path exists on instance |
+| 502 Bad Gateway | Target group has no healthy instances — check security group port 80 |
+| Path routing not working | Check listener rules priority order in ALB |
+| Instances not registering in TG | Verify ASG is attached to the correct Target Group |
+| ALB not reachable | Check SG-Web-Public allows inbound HTTP port 80 |
+
+---
+
+## 📁 File Structure
+
+```
+.
+├── README.md
+├── userdata/
+│   ├── home-userdata.sh        # Nginx config for Home page
+│   ├── mobile-userdata.sh      # Nginx config for Mobile page
+│   └── payment-userdata.sh     # Nginx config for Payment page
+```
+
+---
+
+## 💡 Key Concepts Learned
+
+- **Path-Based Routing** — ALB routes requests based on URL path patterns
+- **Auto Scaling Groups** — Automatically maintain desired instance count
+- **Launch Templates** — Reusable instance configuration for ASGs
+- **Target Groups** — Logical grouping of instances for health checking and routing
+- **Health Checks** — ALB continuously monitors instance health and routes only to healthy targets
+
+---
+
+## 📌 References
+
+- [ALB Path-Based Routing Documentation](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/tutorial-load-balancer-routing.html)
+- [Auto Scaling Groups Documentation](https://docs.aws.amazon.com/autoscaling/ec2/userguide/AutoScalingGroup.html)
+- [Launch Templates Documentation](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-launch-templates.html)
