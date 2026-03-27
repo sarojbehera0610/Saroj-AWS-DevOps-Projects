@@ -207,4 +207,3 @@ SELECT USER();           -- check current user
 GitHub: [sarojbehera0610](https://github.com/sarojbehera0610)  
 ```
 
----
